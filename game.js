@@ -834,7 +834,11 @@ let projectiles = []; // for visual traveling energy shots
 
 camera.worldX = 0; camera.worldY = 0;
 function screenToWorld(sx, sy) {
-  return { x: sx - W / 2 + camera.worldX, y: sy - H / 2 + camera.worldY };
+  // Entities render as: screen = world - camera.worldX  (see enemy/player draw code)
+  // so the inverse is simply: world = screen + camera.worldX — NOT screen - W/2 + camera.worldX.
+  // That extra "- W/2" was a leftover offset that threw off every mouse-aim calculation,
+  // most severely for enemies close to the player (exactly what caused shots to miss nearby targets).
+  return { x: sx + camera.worldX, y: sy + camera.worldY };
 }
 
 function findNearestEnemy(x, y) {
