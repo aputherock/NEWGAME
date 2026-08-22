@@ -36,6 +36,9 @@ resize();
 const isMobile = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0))
   && window.matchMedia('(pointer: coarse)').matches;
 
+// Reduce expensive canvas glow (shadowBlur) on mobile GPUs for smoother frame rate
+const SHADOW_SCALE = isMobile ? 0.5 : 1;
+
 /* ---------------------------------------------------------
    UTILITIES
 --------------------------------------------------------- */
@@ -126,13 +129,21 @@ function updateJoystick(t) {
   joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 }
 
-/* Mobile attack buttons */
+/* Mobile attack buttons — tap fires once immediately, holding auto-fires
+   Blast continuously (matches desktop's hold-mouse-to-fire behavior). */
+let mobileAttackHeld = false;
 document.querySelectorAll('.mbtn').forEach(btn => {
   btn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     setAttack(btn.dataset.atk);
     tryAttack();
+    if (btn.dataset.atk === 'blast') mobileAttackHeld = true;
   }, { passive: false });
+  btn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    mobileAttackHeld = false;
+  }, { passive: false });
+  btn.addEventListener('touchcancel', () => { mobileAttackHeld = false; });
 });
 
 /* Aim: on mobile, aim toward nearest enemy automatically. On desktop, aim at mouse. */
@@ -195,7 +206,7 @@ class Particle {
     if (a <= 0) return;
     c.save();
     c.globalAlpha = a;
-    if (this.glow) { c.shadowColor = this.color; c.shadowBlur = this.size * 3; }
+    if (this.glow) { c.shadowColor = this.color; c.shadowBlur = (this.size * 3) * SHADOW_SCALE; }
     c.fillStyle = this.color;
     const sz = this.shrink ? this.size * this.t : this.size;
     if (this.type === 'dot') {
@@ -216,7 +227,7 @@ class Particle {
 }
 
 let particles = [];
-const MAX_PARTICLES = 450; // perf cap to keep frame time smooth during heavy VFX
+const MAX_PARTICLES = isMobile ? 220 : 450; // perf cap to keep frame time smooth during heavy VFX
 function spawnParticles(arr) {
   for (const p of arr) particles.push(p);
   if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
@@ -543,12 +554,12 @@ class Player {
 
     // outer energy ring
     c.strokeStyle = this.hitFlash > 0 ? '#ff4d6d' : '#00f0ff';
-    c.shadowColor = c.strokeStyle; c.shadowBlur = 18;
+    c.shadowColor = c.strokeStyle; c.shadowBlur = (18) * SHADOW_SCALE;
     c.lineWidth = 2;
     c.beginPath(); c.arc(0, 0, this.r + 6, 0, TAU); c.stroke();
 
     // body (cyber warrior silhouette)
-    c.shadowBlur = 14;
+    c.shadowBlur = (14) * SHADOW_SCALE;
     c.fillStyle = this.hitFlash > 0 ? '#ffb3c0' : '#0d1b2a';
     c.strokeStyle = '#00f0ff';
     c.lineWidth = 2;
@@ -562,7 +573,7 @@ class Player {
 
     // core
     c.fillStyle = '#bffcff';
-    c.shadowBlur = 20;
+    c.shadowBlur = (20) * SHADOW_SCALE;
     c.beginPath(); c.arc(0, -2, 5, 0, TAU); c.fill();
 
     // shoulder blades
@@ -660,7 +671,7 @@ class Enemy {
     c.beginPath(); c.ellipse(0, 6, this.r * 1.6, this.r * 0.7, 0, 0, TAU); c.fill();
 
     c.shadowColor = this.hitFlash > 0 ? '#fff' : this.color;
-    c.shadowBlur = 16;
+    c.shadowBlur = (16) * SHADOW_SCALE;
     c.fillStyle = this.hitFlash > 0 ? '#fff' : '#170510';
     c.strokeStyle = this.color;
     c.lineWidth = 2;
@@ -677,7 +688,7 @@ class Enemy {
     c.fill(); c.stroke();
 
     c.fillStyle = '#fff';
-    c.shadowBlur = 10;
+    c.shadowBlur = (10) * SHADOW_SCALE;
     c.beginPath(); c.arc(0, 0, 3, 0, TAU); c.fill();
 
     c.restore();
@@ -690,7 +701,7 @@ class Enemy {
       c.fillStyle = 'rgba(0,0,0,0.5)';
       c.fillRect(0, 0, bw, 4);
       c.fillStyle = this.color;
-      c.shadowColor = this.color; c.shadowBlur = 6;
+      c.shadowColor = this.color; c.shadowBlur = (6) * SHADOW_SCALE;
       c.fillRect(0, 0, bw * (this.hp / this.maxHp), 4);
       c.restore();
     }
@@ -769,7 +780,7 @@ class Boss extends Enemy {
       c.save();
       c.strokeStyle = '#ff2e4d'; c.lineWidth = 3; c.setLineDash([8, 6]);
       c.globalAlpha = 0.6 + Math.sin(frameCount * 0.3) * 0.3;
-      c.shadowColor = '#ff2e4d'; c.shadowBlur = 12;
+      c.shadowColor = '#ff2e4d'; c.shadowBlur = (12) * SHADOW_SCALE;
       c.beginPath(); c.moveTo(sx, sy); c.lineTo(tx, ty); c.stroke();
       c.beginPath(); c.arc(tx, ty, 50, 0, TAU); c.stroke();
       c.restore();
@@ -788,7 +799,7 @@ class Boss extends Enemy {
     c.beginPath(); c.ellipse(0, 10, this.r * 1.8, this.r * 0.8, 0, 0, TAU); c.fill();
 
     c.shadowColor = this.hitFlash > 0 ? '#fff' : '#ff2e4d';
-    c.shadowBlur = 26;
+    c.shadowBlur = (26) * SHADOW_SCALE;
     c.fillStyle = this.hitFlash > 0 ? '#fff' : '#1a0509';
     c.strokeStyle = '#ff2e4d';
     c.lineWidth = 3;
@@ -804,7 +815,7 @@ class Boss extends Enemy {
     c.fill(); c.stroke();
 
     c.fillStyle = '#ffdfe6';
-    c.shadowBlur = 18;
+    c.shadowBlur = (18) * SHADOW_SCALE;
     c.beginPath(); c.arc(0, 0, 8, 0, TAU); c.fill();
     c.strokeStyle = '#fff'; c.lineWidth = 1.5;
     c.beginPath(); c.arc(0, 0, 14 + Math.sin(frameCount * 0.05) * 3, 0, TAU); c.stroke();
@@ -1047,7 +1058,7 @@ function drawProjectiles(c) {
   for (const p of projectiles) {
     const sx = p.x - camera.worldX, sy = p.y - camera.worldY;
     c.save();
-    c.shadowColor = p.color; c.shadowBlur = 22;
+    c.shadowColor = p.color; c.shadowBlur = (22) * SHADOW_SCALE;
     c.fillStyle = p.color;
     c.beginPath(); c.arc(sx, sy, p.r, 0, TAU); c.fill();
     c.globalAlpha = 0.5;
@@ -1280,7 +1291,7 @@ function update(rawDt) {
   updateCooldownUI();
 
   // continuous fire on mouse-hold / spacebar hold for blast only (feels good)
-  if ((mouse.down || keys['Space']) && currentAttack === 'blast') tryAttack();
+  if ((mouse.down || keys['Space'] || mobileAttackHeld) && currentAttack === 'blast') tryAttack();
 }
 
 function draw() {
@@ -1307,7 +1318,7 @@ function draw() {
     ctx.save();
     ctx.globalAlpha = clamp(b.life / b.maxLife, 0, 1);
     ctx.strokeStyle = b.color;
-    ctx.shadowColor = b.color; ctx.shadowBlur = 16;
+    ctx.shadowColor = b.color; ctx.shadowBlur = (16) * SHADOW_SCALE;
     ctx.lineWidth = b.width;
     ctx.beginPath();
     b.pts.forEach((pt, i) => {

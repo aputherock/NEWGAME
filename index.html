@@ -29,7 +29,7 @@
     <div class="hud-top">
 
       <!-- Player health / power -->
-      <div class="bar-block">
+      <div class="bar-block player-block">
         <div class="bar-label"><span class="tag">PLAYER CORE</span></div>
         <div class="bar-shell">
           <div id="playerHpFill" class="bar-fill hp-fill"></div>
@@ -41,6 +41,12 @@
           <div class="bar-shine"></div>
           <div id="powerText" class="bar-text small">ULTIMATE 0%</div>
         </div>
+      </div>
+
+      <!-- Pause / Mute buttons — reserved grid cell so they never overlap other HUD text -->
+      <div class="hud-controls">
+        <button class="icon-btn" id="muteBtn">🔊</button>
+        <button class="icon-btn" id="pauseBtn">❚❚</button>
       </div>
 
       <!-- Score / Level / Combo -->
@@ -60,7 +66,7 @@
       </div>
 
       <!-- Enemy health -->
-      <div class="bar-block">
+      <div class="bar-block enemy-block">
         <div class="bar-label right"><span class="tag danger">TARGET</span></div>
         <div class="enemy-name" id="enemyName"></div>
         <div class="bar-shell">
@@ -82,10 +88,6 @@
 
     <!-- Kill feed -->
     <div class="killfeed" id="killfeed"></div>
-
-    <!-- Pause / Mute buttons -->
-    <button class="icon-btn" id="pauseBtn">❚❚</button>
-    <button class="icon-btn" id="muteBtn">🔊</button>
 
     <!-- Attack wheel -->
     <div class="hud-bottom">
@@ -122,10 +124,10 @@
       </div>
     </div>
     <div class="mobile-attacks">
-      <div class="mbtn" data-atk="blast">BLAST</div>
-      <div class="mbtn" data-atk="lightning">VOLT</div>
-      <div class="mbtn" data-atk="fireball">FLARE</div>
-      <div class="mbtn ult" data-atk="ultimate">ULTRA</div>
+      <div class="mbtn" data-atk="blast"><span class="mbtn-icon blast-icon"></span><span class="mbtn-label">BLAST</span></div>
+      <div class="mbtn" data-atk="lightning"><span class="mbtn-icon lightning-icon"></span><span class="mbtn-label">VOLT</span></div>
+      <div class="mbtn" data-atk="fireball"><span class="mbtn-icon fireball-icon"></span><span class="mbtn-label">FLARE</span></div>
+      <div class="mbtn ult" data-atk="ultimate"><span class="mbtn-icon ultimate-icon"></span><span class="mbtn-label">ULTRA</span></div>
     </div>
   </div>
 
@@ -175,4 +177,4 @@
 
 <script src="game.js"></script>
 </body>
-</html>
+</html> 
