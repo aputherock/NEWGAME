@@ -29,6 +29,14 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// Copyright footer — stamp the current year in wherever it's used
+(function stampCopyrightYear() {
+  const year = new Date().getFullYear();
+  const yearEl = document.getElementById('copyrightYear');
+  if (yearEl) yearEl.textContent = year;
+  document.querySelectorAll('.creditYear').forEach(el => { el.textContent = year; });
+})();
+
 // Detect an actual touch/mobile device — NOT just a narrow window.
 // (Using window width alone falsely triggers "mobile mode" in narrow desktop
 //  previews/split-screens, which disables free mouse-aim and locks the player
@@ -1118,6 +1126,127 @@ let bgPortals = [
   { x: -1400, y: -700, r: 110, hue: 200 },
 ];
 
+/* ---- Skyline: houses + trees lining the horizon, scrolling with parallax ---- */
+let bgSkyline = [];
+(function initSkyline() {
+  let x = -4200;
+  while (x < 4200) {
+    if (Math.random() < 0.38) {
+      const w = rand(24, 38);
+      bgSkyline.push({ type: 'tree', x, w, h: rand(44, 78), sway: rand(0, TAU), hue: 165 + rand(-15, 15) });
+      x += w + rand(24, 60);
+    } else {
+      const w = rand(46, 100);
+      bgSkyline.push({
+        type: 'house', x, w, h: rand(64, 210),
+        hue: rand(180, 320), windows: Math.round(rand(2, 5)),
+        winSeed: rand(0, 1000), roof: Math.random() < 0.5,
+      });
+      x += w + rand(18, 55);
+    }
+  }
+})();
+
+/* ---- Birds: a small flock that actually flies across the world, with parallax depth ---- */
+let bgBirds = [];
+for (let i = 0; i < 9; i++) {
+  bgBirds.push({
+    x: rand(-2000, 2000), yOff: rand(-260, -60),
+    speed: (Math.random() < 0.5 ? 1 : -1) * rand(28, 60),
+    depth: rand(0.55, 0.85), // parallax factor: closer birds move faster across screen
+    scale: rand(0.7, 1.3),
+    flapPhase: rand(0, TAU), flapSpeed: rand(0.12, 0.2),
+    bobPhase: rand(0, TAU),
+  });
+}
+function updateBirds(dt) {
+  for (const b of bgBirds) {
+    b.x += b.speed * (dt / 16.6);
+    b.flapPhase += b.flapSpeed * (dt / 16.6);
+  }
+}
+function drawSkyline(c, horizon) {
+  for (const el of bgSkyline) {
+    const sx = el.x - camera.worldX * 0.45;
+    if (sx < -160 || sx > W + 160) continue;
+    if (el.type === 'house') {
+      const hx = sx - el.w / 2, hy = horizon - el.h;
+      const grd = c.createLinearGradient(0, hy, 0, horizon);
+      grd.addColorStop(0, `hsla(${el.hue}, 45%, 16%, 0.95)`);
+      grd.addColorStop(1, `hsla(${el.hue}, 40%, 9%, 0.95)`);
+      c.fillStyle = grd;
+      c.fillRect(hx, hy, el.w, el.h);
+      // roof
+      if (el.roof) {
+        c.beginPath();
+        c.moveTo(hx - 4, hy);
+        c.lineTo(hx + el.w / 2, hy - el.w * 0.32);
+        c.lineTo(hx + el.w + 4, hy);
+        c.closePath();
+        c.fillStyle = `hsla(${el.hue}, 40%, 8%, 0.95)`;
+        c.fill();
+      }
+      // neon roofline edge
+      c.strokeStyle = `hsla(${el.hue}, 100%, 65%, 0.55)`;
+      c.lineWidth = 1.2;
+      c.shadowColor = `hsla(${el.hue},100%,60%,0.8)`; c.shadowBlur = 6 * SHADOW_SCALE;
+      c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + el.w, hy); c.stroke();
+      c.shadowBlur = 0;
+      // glowing windows
+      const rows = Math.max(1, Math.floor(el.h / 26));
+      for (let r = 0; r < rows; r++) {
+        for (let wI = 0; wI < el.windows; wI++) {
+          const lit = Math.sin(el.winSeed + r * 3.1 + wI * 1.7 + frameCount * 0.004) > -0.2;
+          if (!lit) continue;
+          const wx = hx + 6 + wI * ((el.w - 12) / el.windows);
+          const wy = hy + 10 + r * 24;
+          if (wy > horizon - 8) continue;
+          c.fillStyle = `hsla(${el.hue}, 100%, 72%, 0.85)`;
+          c.shadowColor = `hsla(${el.hue},100%,65%,0.9)`; c.shadowBlur = 5 * SHADOW_SCALE;
+          c.fillRect(wx, wy, 5, 7);
+        }
+      }
+      c.shadowBlur = 0;
+    } else {
+      // tree — trunk + soft foliage clusters, gentle wind sway
+      const sway = Math.sin(frameCount * 0.015 + el.sway) * 3;
+      const baseX = sx + sway, baseY = horizon;
+      c.strokeStyle = 'rgba(20,14,10,0.9)';
+      c.lineWidth = el.w * 0.16;
+      c.beginPath(); c.moveTo(sx, baseY); c.lineTo(baseX, baseY - el.h * 0.4); c.stroke();
+      c.fillStyle = `hsla(${el.hue}, 55%, 12%, 0.95)`;
+      c.strokeStyle = `hsla(${el.hue}, 90%, 55%, 0.35)`;
+      c.lineWidth = 1;
+      c.shadowColor = `hsla(${el.hue},100%,60%,0.5)`; c.shadowBlur = 5 * SHADOW_SCALE;
+      const cx = baseX, cy = baseY - el.h * 0.72;
+      for (const [ox, oy, r] of [[0, 0, el.w * 0.55], [-el.w * 0.4, el.w * 0.12, el.w * 0.4], [el.w * 0.4, el.w * 0.1, el.w * 0.4]]) {
+        c.beginPath(); c.arc(cx + ox, cy + oy, r, 0, TAU); c.fill(); c.stroke();
+      }
+      c.shadowBlur = 0;
+    }
+  }
+}
+function drawBirds(c) {
+  for (const b of bgBirds) {
+    const sx = b.x - camera.worldX * b.depth;
+    if (sx < -60 || sx > W + 60) continue;
+    const sy = H * 0.32 + b.yOff + Math.sin(frameCount * 0.02 + b.bobPhase) * 6 - camera.worldY * b.depth * 0.2;
+    if (sy < -20 || sy > H * 0.6) continue;
+    const flap = Math.sin(b.flapPhase) * 6 * b.scale;
+    c.save();
+    c.strokeStyle = 'rgba(180,210,230,0.55)';
+    c.lineWidth = 1.6 * b.scale;
+    c.lineCap = 'round';
+    c.shadowColor = 'rgba(150,220,255,0.4)'; c.shadowBlur = 3 * SHADOW_SCALE;
+    c.beginPath();
+    c.moveTo(sx - 8 * b.scale, sy - flap);
+    c.quadraticCurveTo(sx - 3 * b.scale, sy + 2 * b.scale, sx, sy);
+    c.quadraticCurveTo(sx + 3 * b.scale, sy + 2 * b.scale, sx + 8 * b.scale, sy - flap);
+    c.stroke();
+    c.restore();
+  }
+}
+
 function drawBackground(c) {
   c.save();
   // deep gradient
@@ -1156,6 +1285,13 @@ function drawBackground(c) {
 
   // perspective grid floor
   const horizon = H * 0.62;
+
+  // birds flying across the sky (independent flight + parallax depth)
+  drawBirds(c);
+
+  // skyline — houses & trees standing right at the horizon line
+  drawSkyline(c, horizon);
+
   c.strokeStyle = 'rgba(0,240,255,0.18)';
   c.lineWidth = 1;
   const gridOffsetX = -camera.worldX % 80;
@@ -1282,6 +1418,8 @@ function update(rawDt) {
   for (const p of particles) p.update(dt);
   particles = particles.filter(p => p.life > 0);
   if (particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
+
+  updateBirds(dt);
 
   // lightning bolts decay
   for (const b of lightningBolts) b.life -= rawDt;

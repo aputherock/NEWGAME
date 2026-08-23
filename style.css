@@ -384,6 +384,29 @@ canvas{
 }
 
 .footer-note{ margin-top:22px; font-size:12px; letter-spacing:1px; color:#8ab; opacity:0.7; }
+.footer-credit{
+  margin-top:14px; font-family:'Orbitron', sans-serif; font-size:10.5px; letter-spacing:1.5px;
+  color: var(--cyan-soft); opacity:0.65;
+}
+
+/* Persistent copyright line — visible on every screen, tucked out of the way of gameplay/controls */
+#copyrightFooter{
+  position:absolute;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  left:0; right:0;
+  text-align:center;
+  font-family:'Orbitron', sans-serif;
+  font-size: clamp(8px, 1.6vw, 10px);
+  letter-spacing:1.5px;
+  color: rgba(180, 230, 255, 0.35);
+  text-shadow: 0 0 6px rgba(0,240,255,0.25);
+  pointer-events:none;
+  z-index:15;
+  user-select:none;
+}
+@media (max-width: 820px){
+  #copyrightFooter{ display:none; } /* mobile controls occupy this space — credit still shows on start/pause/game-over screens */
+}
 
 .panel-title{
   font-family:'Orbitron', sans-serif; font-weight:900; font-size: clamp(24px,4vw,36px);
