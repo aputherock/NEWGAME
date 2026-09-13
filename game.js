@@ -330,8 +330,8 @@ function chromaGlitch(dur = 300) {
 --------------------------------------------------------- */
 const SFX = (() => {
   let actx = null, masterGain = null, musicGain = null, sfxGain = null;
-  let musicTimer = null, musicStep = 0, muted = false, ready = false;
-  let padOsc1, padOsc2, padFilter, padLFO, noiseBuffer = null;
+  let muted = false, ready = false;
+  let noiseBuffer = null;
 
   function init() {
     if (ready) return;
@@ -411,53 +411,33 @@ const SFX = (() => {
   function levelUp() { tone(500, 0.25, { type: 'triangle', gain: 0.2, sweepTo: 900 }); }
   function uiClick() { tone(660, 0.08, { type: 'triangle', gain: 0.15, sweepTo: 880 }); }
 
-  /* ---- background music: ambient drone pad + cyberpunk arpeggio loop ---- */
+  /* ---- background music: real audio file (looped) ---- */
+  const bgMusicEl = document.getElementById('bgMusic');
+  if (bgMusicEl) bgMusicEl.volume = 0.45; // adjust 0.0 - 1.0 to taste
+
   function startMusic() {
-    if (!ready || musicTimer) return;
-    resume();
-    padOsc1 = actx.createOscillator(); padOsc1.type = 'sawtooth'; padOsc1.frequency.value = 55;
-    padOsc2 = actx.createOscillator(); padOsc2.type = 'sawtooth'; padOsc2.frequency.value = 55.6;
-    padFilter = actx.createBiquadFilter(); padFilter.type = 'lowpass'; padFilter.frequency.value = 400; padFilter.Q.value = 3;
-    const padGain = actx.createGain(); padGain.gain.value = 0.5;
-    padOsc1.connect(padFilter); padOsc2.connect(padFilter); padFilter.connect(padGain); padGain.connect(musicGain);
-    padOsc1.start(); padOsc2.start();
-
-    padLFO = actx.createOscillator(); padLFO.type = 'sine'; padLFO.frequency.value = 0.08;
-    const lfoGain = actx.createGain(); lfoGain.gain.value = 220;
-    padLFO.connect(lfoGain); lfoGain.connect(padFilter.frequency);
-    padLFO.start();
-
-    const scale = [220, 261.6, 293.7, 329.6, 392, 440, 523.3];
-    const pattern = [0, 2, 4, 2, 5, 4, 2, 0];
-    musicStep = 0;
-    musicTimer = setInterval(() => {
-      if (muted || !ready) return;
-      const note = scale[pattern[musicStep % pattern.length]];
-      musicStep++;
-      const osc = actx.createOscillator(), g = actx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = note * (musicStep % 16 === 0 ? 2 : 1);
-      g.gain.setValueAtTime(0.0001, now());
-      g.gain.exponentialRampToValueAtTime(0.11, now() + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, now() + 0.28);
-      osc.connect(g); g.connect(musicGain);
-      osc.start(); osc.stop(now() + 0.3);
-    }, 260);
+    if (!bgMusicEl) return;
+    bgMusicEl.loop = true;
+    bgMusicEl.currentTime = 0;
+    bgMusicEl.play().catch(() => {}); // ignored if blocked before user gesture
   }
   function stopMusic() {
-    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
-    [padOsc1, padOsc2, padLFO].forEach(o => { try { o.stop(); } catch (e) {} });
-    padOsc1 = padOsc2 = padLFO = null;
+    if (!bgMusicEl) return;
+    bgMusicEl.pause();
+    bgMusicEl.currentTime = 0;
   }
+  function pauseMusic() { if (bgMusicEl) bgMusicEl.pause(); }
+  function resumeMusic() { if (bgMusicEl && !muted) bgMusicEl.play().catch(() => {}); }
   function toggleMute() {
     muted = !muted;
     if (masterGain) masterGain.gain.value = muted ? 0 : 0.9;
+    if (bgMusicEl) bgMusicEl.muted = muted;
     return muted;
   }
 
   return {
     init, resume, suspend, blast, lightning, fire, explosion, hit, ultimate,
-    bossRoar, levelUp, uiClick, startMusic, stopMusic, toggleMute, isMuted: () => muted,
+    bossRoar, levelUp, uiClick, startMusic, stopMusic, pauseMusic, resumeMusic, toggleMute, isMuted: () => muted,
   };
 })();
 
@@ -1531,11 +1511,13 @@ function togglePause() {
     gameState = STATE.PAUSED;
     el('pauseScreen').classList.remove('hidden');
     SFX.suspend();
+    SFX.pauseMusic();
   } else if (gameState === STATE.PAUSED) {
     gameState = STATE.PLAYING;
     el('pauseScreen').classList.add('hidden');
     lastTime = performance.now();
     SFX.resume();
+    SFX.resumeMusic();
   }
 }
 
