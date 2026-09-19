@@ -1002,9 +1002,16 @@ canvas {
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 820px) {
+  .hud-bottom {
+    top: auto;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
   .attack-wheel {
     transform: scale(0.78);
-    transform-origin: center right;
+    transform-origin: bottom center;
   }
   .instructions {
     max-width: 300px;
